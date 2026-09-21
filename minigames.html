@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kejutan Untukmu! 💖</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Nunito', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #fce4ec, #f3e5f5);
+            /* Soft pink to soft purple */
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) scale(0.5) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-10vh) scale(1.2) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes pop {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+        
+        .heart-element {
+            position: absolute;
+            bottom: -50px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            filter: drop-shadow(0 4px 6px rgba(255, 105, 180, 0.4));
+            transition: transform 0.1s;
+        }
+        
+        .heart-element:active {
+            transform: scale(0.8);
+        }
+        
+        .popped {
+            animation: pop 0.3s ease-out forwards !important;
+            pointer-events: none;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 15px rgba(255, 105, 180, 0.6), 0 0 30px rgba(255, 105, 180, 0.4);
+        }
+    </style>
+</head>
+
+<body class="h-screen w-screen flex flex-col items-center justify-center relative">
+
+    <!-- Game UI Container -->
+    <div id="game-ui" class="z-10 text-center transition-all duration-700 ease-in-out px-4">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-pink-500 mb-3 drop-shadow-md">Tangkap 10 Hati! 💖</h1>
+        <p class="text-lg md:text-xl text-purple-700 mb-6 font-semibold bg-white/40 inline-block px-4 py-1 rounded-full backdrop-blur-sm shadow-sm">
+            Klik atau sentuh hati untuk melihat kejutan.
+        </p>
+        <div class="mt-2 text-2xl font-bold bg-white/80 backdrop-blur-md px-8 py-3 rounded-full shadow-lg inline-block text-pink-600 border-2 border-pink-200">
+            Skor: <span id="score" class="text-purple-600 text-3xl">0</span> / 10
+        </div>
+    </div>
+
+    <!-- Surprise Message Container (Hidden initially) -->
+    <div id="message-container" class="absolute inset-0 flex items-center justify-center opacity-0 pointer-events-none z-20 transition-opacity duration-1000 p-4">
+        <div id="message-card" class="bg-white/90 backdrop-blur-xl p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg mx-auto transform scale-50 transition-transform duration-1000 border-4 border-pink-100 relative overflow-hidden">
+            <!-- Decorative background blobs -->
+            <div class="absolute -top-10 -left-10 w-32 h-32 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+
+            <h2 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600 mb-6 glow-text relative z-10">
+                Yeay! Kamu berhasil! 🎉
+            </h2>
+            <p class="text-lg md:text-xl leading-relaxed text-gray-700 font-medium relative z-10">
+                Cuma mau bilang...<br><br>
+                <span class="text-pink-600 font-bold">Terima kasih sudah menjadi orang yang luar biasa!</span><br><br> Semoga harimu selalu penuh dengan kebahagiaan dan senyuman. 😊✨
+            </p>
+        </div>
+    </div>
+
+    <!-- Canvas for Confetti -->
+    <canvas id="confetti-canvas" class="absolute inset-0 pointer-events-none z-30"></canvas>
+
+    <script>
+        // Game State Variables
+        let score = 0;
+        const targetScore = 10;
+        let gameActive = true;
+        let spawnInterval;
+
+        const scoreDisplay = document.getElementById('score');
+        const gameUI = document.getElementById('game-ui');
+        const messageContainer = document.getElementById('message-container');
+        const messageCard = document.getElementById('message-card');
+
+        // Emojis to use for floating hearts
+        const heartEmojis = ['💖', '💗', '💓', '💕', '💘', '💝', '✨'];
+
+        function spawnHeart() {
+            if (!gameActive) return;
+
+            const heart = document.createElement('div');
+            heart.classList.add('heart-element');
+
+            // Randomize appearance
+            const randomEmoji = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+            heart.innerHTML = randomEmoji;
+
+            // Randomize position, size, and speed
+            const startX = Math.random() * 90; // 0 to 90vw
+            const duration = Math.random() * 3 + 4; // 4 to 7 seconds
+            const size = Math.random() * 20 + 40; // 40px to 60px
+
+            heart.style.left = `${startX}vw`;
+            heart.style.fontSize = `${size}px`;
+            heart.style.animation = `floatUp ${duration}s linear forwards`;
+
+            // Handle clicking/tapping the heart
+            const catchHeart = (e) => {
+                if (!gameActive || heart.classList.contains('popped')) return;
+
+                // Prevent default to avoid double firing on touch devices
+                e.preventDefault();
+
+                heart.classList.add('popped');
+                score++;
+                scoreDisplay.innerText = score;
+
+                // Add a little pop effect to the score display
+                scoreDisplay.style.transform = 'scale(1.5)';
+                setTimeout(() => scoreDisplay.style.transform = 'scale(1)', 150);
+
+                checkWinCondition();
+            };
+
+            heart.addEventListener('mousedown', catchHeart);
+            heart.addEventListener('touchstart', catchHeart, {
+                passive: false
+            });
+
+            // Remove element after animation finishes to prevent memory leaks
+            heart.addEventListener('animationend', () => {
+                if (heart.parentNode) heart.parentNode.removeChild(heart);
+            });
+
+            document.body.appendChild(heart);
+        }
+
+        function checkWinCondition() {
+            if (score >= targetScore && gameActive) {
+                gameActive = false;
+                clearInterval(spawnInterval);
+
+                // Remove all remaining hearts on screen
+                const remainingHearts = document.querySelectorAll('.heart-element');
+                remainingHearts.forEach(h => {
+                    h.style.transition = 'opacity 0.5s, transform 0.5s';
+                    h.style.opacity = '0';
+                    h.style.transform = 'scale(0)';
+                    setTimeout(() => {
+                        if (h.parentNode) h.parentNode.removeChild(h);
+                    }, 500);
+                });
+
+                // Transition UI
+                setTimeout(() => {
+                    gameUI.style.opacity = '0';
+                    gameUI.style.transform = 'translateY(-20px)';
+
+                    setTimeout(() => {
+                        gameUI.style.display = 'none';
+                        showSurpriseMessage();
+                    }, 700);
+                }, 500);
+            }
+        }
+
+        function showSurpriseMessage() {
+            messageContainer.style.opacity = '1';
+            messageContainer.style.pointerEvents = 'auto'; // Make it interactive if needed later
+
+            // Pop out effect for the card
+            setTimeout(() => {
+                messageCard.style.transform = 'scale(1)';
+                startConfetti();
+            }, 100);
+        }
+
+        // Lightweight Confetti System using Canvas
+        function startConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#ff718d', '#fdff6a', '#7afcff', '#ffb3ba', '#e0bbe4'];
+
+            // Create particles
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    w: Math.random() * 10 + 5,
+                    h: Math.random() * 10 + 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vy: Math.random() * 3 + 2,
+                    vx: Math.random() * 2 - 1,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: Math.random() * 10 - 5
+                });
+            }
+
+            // Animation Loop
+            function animateConfetti() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rotation += p.rotationSpeed;
+
+                    // Draw confetti piece
+                    ctx.save();
+                    ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+
+                    // Reset if it goes off screen
+                    if (p.y > canvas.height) {
+                        p.y = -20;
+                        p.x = Math.random() * canvas.width;
+                        p.vy = Math.random() * 3 + 2;
+                    }
+                });
+
+                requestAnimationFrame(animateConfetti);
+            }
+
+            // Handle window resize for canvas
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+
+            animateConfetti();
+        }
+
+        // Start Game Loop on load
+        window.onload = () => {
+            // Spawn a heart every 600ms
+            spawnInterval = setInterval(spawnHeart, 600);
+
+            // Spawn a few initial hearts immediately
+            setTimeout(spawnHeart, 100);
+            setTimeout(spawnHeart, 300);
+        };
+    </script>
+</body>
+
+</html>
